@@ -1,7 +1,6 @@
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
-// console.log(process.env.SECRET) // optional: remove noisy log
 
 const express = require('express');
 const path = require('path');
@@ -10,7 +9,6 @@ const ExpressError = require('./utils/ExpressError');
 const ejsMate = require('ejs-mate');
 const flash = require('connect-flash');
 const mongoSanitize = require('express-mongo-sanitize');
-const joi = require('joi');
 const session = require('express-session');
 const methodOverride = require('method-override');
 const passport = require('passport');
@@ -18,47 +16,44 @@ const LocalStrategy = require('passport-local');
 const User = require('./models/user');
 const helmet = require('helmet');
 
-// REQUIRING CAMPGROUNDS ROUTER
+// Routers
 const campgroundRoutes = require('./routes/campgrounds');
-// REQUIRING REVIEWS ROUTER
 const reviewRoutes = require('./routes/reviews');
-// REQUIRING USERS ROUTER
 const userRoutes = require('./routes/users');
-const { MongoStore } = require('connect-mongo');
 
+// connect-mongo v3 style (matches your package.json)
 const MongoDBStore = require('connect-mongo')(session);
-// Build DB URL and TRIM it (removes trailing \n, spaces)
-// --- Build & sanitize DB URL completely ---
-const rawDbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
 
-// Remove zero-width chars + ALL whitespace anywhere, then trim again
-const dburl = 'mongodb+srv://Tanisha1:TanishaSinghai@cluster0.uybd3xy.mongodb.net/yelpcamp?retryWrites=true&w=majority&appName=Cluster0';
+/* ----------------------------- DB CONNECTION ----------------------------- */
+// Use your Atlas URI directly (bypasses any broken env var)
+const ATLAS_URI_HARDCODED =
+  'mongodb+srv://Tanisha1:TanishaSinghai@cluster0.uybd3xy.mongodb.net/yelpcamp?retryWrites=true&w=majority&appName=Cluster0';
 
-// Debug the sanitized value (mask password) so we can SEE what Render is giving us
+// Sanitize (strip zero-width + whitespace just in case)
+const dburl = ATLAS_URI_HARDCODED
+  .replace(/[\u200B-\u200D\uFEFF]/g, '')
+  .replace(/[\r\n\t ]/g, '')
+  .trim();
+
+// Safe debug
 const masked = dburl.replace(/(:)([^@]+)(@)/, '$1<hidden>$3');
 console.log('DB_URL (masked):', masked);
 console.log('len =', dburl.length, '| hasWhitespace =', /\s/.test(dburl));
-for (let i = 0; i < dburl.length; i++) {
-  const ch = dburl[i];
-  if (/[\s'\"`]/.test(ch) || ch.charCodeAt(0) > 126) {
-    console.log('⚠ odd char at', i, 'code=', ch.charCodeAt(0), 'repr=', JSON.stringify(ch));
-  }
-}
 
-console.log('CONNECTING WITH:', dburl.includes('?') ? 'SRV + query params' : 'SRV (no params)');
+mongoose
+  .connect(dburl, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useCreateIndex: true,
+    useFindAndModify: false
+  })
+  .then(() => console.log('✅ Database Connected'))
+  .catch((err) => {
+    console.error('❌ Mongo connection error:', err);
+    process.exit(1);
+  });
 
-// CONNECTING MONGOOSE
-mongoose.connect(dburl, {
-  useNewUrlParser: true,
-  useCreateIndex: true,
-  useUnifiedTopology: true,
-  useFindAndModify: false
-});
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'Connection error:'));
-db.once('open', () => {
-  console.log('Database Connected');
-});
+/* --------------------------------- APP ---------------------------------- */
 
 const app = express();
 
@@ -69,15 +64,12 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(
-  mongoSanitize({
-    replaceWith: '_'
-  })
-);
+app.use(mongoSanitize({ replaceWith: '_' }));
 
-// <<< ADDED: trust proxy for Render/HTTPS before session
+// Render/Proxy
 app.set('trust proxy', 1);
 
+/* ----------------------------- SESSIONS/SEC ------------------------------ */
 const secret = process.env.SECRET || 'secret';
 
 const store = new MongoDBStore({
@@ -85,32 +77,30 @@ const store = new MongoDBStore({
   secret,
   touchAfter: 24 * 60 * 60
 });
+store.on('error', () => console.log('SESSION STORE ERROR'));
 
-store.on('error', function (e) {
-  console.log('SESSION STORE ERROR');
-});
-
-// <<< CHANGED: session cookie settings for prod vs dev
 const isProd = process.env.NODE_ENV === 'production';
-const sessionConfig = {
-  store,
-  name: 'session',
-  secret,
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    httpOnly: true,
-    secure: isProd, // secure cookies on HTTPS (Render)
-    sameSite: isProd ? 'none' : 'lax',
-    expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
-    maxAge: 1000 * 60 * 60 * 24 * 7
-  }
-};
-app.use(session(sessionConfig));
+app.use(
+  session({
+    store,
+    name: 'session',
+    secret,
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
+      maxAge: 1000 * 60 * 60 * 24 * 7
+    }
+  })
+);
+
 app.use(flash());
 app.use(helmet());
 
-// <<< CHANGED: remove Mapbox from CSP; allow Leaflet & OSM
+// CSP for Leaflet/OSM (+ Cloudinary/Unsplash images)
 const scriptSrcUrls = [
   'https://unpkg.com/',
   'https://cdn.jsdelivr.net/',
@@ -126,13 +116,11 @@ const styleSrcUrls = [
   'https://fonts.googleapis.com/',
   'https://use.fontawesome.com/'
 ];
-const connectSrcUrls = [
-  'https://tile.openstreetmap.org' // OSM tiles
-];
+const connectSrcUrls = ['https://tile.openstreetmap.org'];
 const imgSrcUrls = [
-  'https://tile.openstreetmap.org', // OSM tiles
+  'https://tile.openstreetmap.org',
   'https://images.unsplash.com/',
-  'https://res.cloudinary.com/YOUR_CLOUD_NAME/', // <<< CHANGED: put your Cloudinary cloud name here
+  'https://res.cloudinary.com/<YOUR_CLOUDINARY_CLOUD_NAME>/', // ← put your cloud name here or remove
   'data:',
   'blob:'
 ];
@@ -153,6 +141,7 @@ app.use(
   })
 );
 
+/* ----------------------------- AUTH (PASSPORT) --------------------------- */
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(new LocalStrategy(User.authenticate()));
@@ -166,41 +155,27 @@ app.use((req, res, next) => {
   next();
 });
 
-// ROUTE HANDLERS
+/* -------------------------------- ROUTES -------------------------------- */
 app.use('/campgrounds', campgroundRoutes);
 app.use('/campgrounds/:id/reviews', reviewRoutes);
 app.use('/', userRoutes);
 
-/*
-1. /register-FORM
-2. POST /register-creates a user
-3.
-*/
 app.get('/fakeuser', async (req, res) => {
   const user = new User({ email: 't@gmail.com', username: 'tani' });
   const newUser = await User.register(user, 'chicken');
   res.send(newUser);
 });
 
-// HOME ROUTE
-app.get('/', (req, res) => {
-  res.render('home');
-});
+app.get('/', (req, res) => res.render('home'));
 
-// EXPRESS ERROR
-app.all('*', (req, res, next) => {
-  next(new ExpressError('Page Not Found', 404));
-});
+app.all('*', (req, res, next) => next(new ExpressError('Page Not Found', 404)));
 
-// BASIC ERROR HANDLING
 app.use((err, req, res, next) => {
   const { statusCode = 500 } = err;
   if (!err.message) err.message = 'Oh No, Something went wrong!!!';
   res.status(statusCode).render('error', { err });
 });
 
+/* --------------------------------- START -------------------------------- */
 const port = process.env.PORT || 3000;
-// SETTING PORT ON SERVER
-app.listen(port, () => {
-  console.log(`SERVING ON PORT ${port}`);
-});
+app.listen(port, () => console.log(`SERVING ON PORT ${port}`));
