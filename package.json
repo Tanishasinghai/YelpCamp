@@ -5,12 +5,14 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start":"node app.js"
+    "start": "node app.js"
   },
   "author": "Tanisha Singhai",
   "license": "ISC",
+  "engines": {
+    "node": ">=16"
+  },
   "dependencies": {
-    "@mapbox/mapbox-sdk": "^0.11.0",
     "cloudinary": "^1.23.0",
     "connect-flash": "^0.1.1",
     "connect-mongo": "^3.2.0",
