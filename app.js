@@ -27,13 +27,16 @@ const userRoutes = require('./routes/users');
 const { MongoStore } = require('connect-mongo');
 
 const MongoDBStore = require('connect-mongo')(session);
-const dburl = (process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp').trim();
-const raw = process.env.DB_URL || '';
-const masked = raw.replace(/(:)([^@]+)(@)/, '$1<hidden>$3');
+// Build DB URL and TRIM it (removes trailing \n, spaces)
+const rawDbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
+const dburl = rawDbUrl.trim();
+
+// Debug the TRIMMED value (mask password)
+const masked = dburl.replace(/(:)([^@]+)(@)/, '$1<hidden>$3');
 console.log('DB_URL (masked):', masked);
-console.log('len=', raw.length, 'hasWhitespace=', /\s/.test(raw));
-for (let i = 0; i < raw.length; i++) {
-  if (/\s/.test(raw[i])) console.log('whitespace at index', i, JSON.stringify(raw[i]));
+console.log('len =', dburl.length, '| hasWhitespace =', /\s/.test(dburl));
+for (let i = 0; i < dburl.length; i++) {
+  if (/\s/.test(dburl[i])) console.log('whitespace at index', i, JSON.stringify(dburl[i]));
 }
 
 // CONNECTING MONGOOSE
