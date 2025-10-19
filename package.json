@@ -4,13 +4,13 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js"
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Tanisha Singhai",
   "license": "ISC",
   "engines": {
-    "node": ">=16"
+    "node": "18.x"
   },
   "dependencies": {
     "cloudinary": "^1.23.0",
