@@ -110,11 +110,13 @@ const styleSrcUrls = [
   'https://fonts.googleapis.com/',
   'https://use.fontawesome.com/'
 ];
-const connectSrcUrls = ['https://tile.openstreetmap.org'];
+const connectSrcUrls = [
+  'https://*.tile.openstreetmap.org'
+];
 const imgSrcUrls = [
-  'https://tile.openstreetmap.org',
+  'https://*.tile.openstreetmap.org',
   'https://images.unsplash.com/',
-  'https://res.cloudinary.com/<YOUR_CLOUDINARY_CLOUD_NAME>/', // ← put your cloud name here or remove
+  'https://res.cloudinary.com/<YOUR_CLOUDINARY_CLOUD_NAME>/', // set your real cloud name
   'data:',
   'blob:'
 ];
@@ -134,6 +136,9 @@ app.use(
     }
   })
 );
+
+
+
 
 /* ----------------------------- AUTH (PASSPORT) --------------------------- */
 app.use(passport.initialize());
