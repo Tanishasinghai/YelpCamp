@@ -24,16 +24,10 @@ const userRoutes = require('./routes/users');
 // connect-mongo v3 style (matches your package.json)
 const MongoDBStore = require('connect-mongo')(session);
 
-/* ----------------------------- DB CONNECTION ----------------------------- */
-// Use your Atlas URI directly (bypasses any broken env var)
-const ATLAS_URI_HARDCODED =
-  'mongodb+srv://Tanisha1:TanishaSinghai@cluster0.uybd3xy.mongodb.net/yelpcamp?retryWrites=true&w=majority&appName=Cluster0';
 
 // Sanitize (strip zero-width + whitespace just in case)
-const dburl = ATLAS_URI_HARDCODED
-  .replace(/[\u200B-\u200D\uFEFF]/g, '')
-  .replace(/[\r\n\t ]/g, '')
-  .trim();
+const dburl ='mongodb+srv://Tanisha1:TanishaSinghai@cluster0.uybd3xy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+
 
 // Safe debug
 const masked = dburl.replace(/(:)([^@]+)(@)/, '$1<hidden>$3');
