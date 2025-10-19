@@ -27,7 +27,7 @@ const userRoutes = require('./routes/users');
 const { MongoStore } = require('connect-mongo');
 
 const MongoDBStore = require('connect-mongo')(session);
-const dburl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
+const dburl = (process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp').trim();
 const raw = process.env.DB_URL || '';
 const masked = raw.replace(/(:)([^@]+)(@)/, '$1<hidden>$3');
 console.log('DB_URL (masked):', masked);
