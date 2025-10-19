@@ -32,7 +32,7 @@ const MongoDBStore = require('connect-mongo')(session);
 const rawDbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
 
 // Remove zero-width chars + ALL whitespace anywhere, then trim again
-const dburl = 'mongodb+srv://Tanisha1:TanishaSinghai@cluster0.uybd3xy.mongodb.net/yelpcamp';
+const dburl = 'mongodb+srv://Tanisha1:TanishaSinghai@cluster0.uybd3xy.mongodb.net/yelpcamp?retryWrites=true&w=majority&appName=Cluster0';
 
 // Debug the sanitized value (mask password) so we can SEE what Render is giving us
 const masked = dburl.replace(/(:)([^@]+)(@)/, '$1<hidden>$3');
@@ -45,6 +45,7 @@ for (let i = 0; i < dburl.length; i++) {
   }
 }
 
+console.log('CONNECTING WITH:', dburl.includes('?') ? 'SRV + query params' : 'SRV (no params)');
 
 // CONNECTING MONGOOSE
 mongoose.connect(dburl, {
