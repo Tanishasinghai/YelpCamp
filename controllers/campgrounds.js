@@ -1,9 +1,27 @@
 const Campground=require('../models/campground');
 const maxGeocoding=require('@mapbox/mapbox-sdk/services/geocoding');
-const mapBoxToken=process.env.MAPBOX_TOKEN;
-const geocoder=maxGeocoding({accessToken:mapBoxToken});
-const {cloudinary}=require('../cloudinary');
- 
+//const mapBoxToken=process.env.MAPBOX_TOKEN;
+//const geocoder=maxGeocoding({accessToken:mapBoxToken});
+//const {cloudinary}=require('../cloudinary');
+// --- OSM (Nominatim) geocoder: no API key needed ---
+async function geocodeOSM(query) {
+  const url = new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('q', query);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('limit', '1');
+  const res = await fetch(url, {
+    headers: {
+      // Be polite per Nominatim policy – put your contact email
+      'User-Agent': 'YelpCamp Demo (your-email@example.com)'
+    }
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data?.[0]) return null;
+  // Return GeoJSON Point: [lng, lat]
+  return { type: 'Point', coordinates: [Number(data[0].lon), Number(data[0].lat)] };
+}
+
 
 module.exports.index=async (req,res,next)=>{
     const campgrounds=await Campground.find({});
