@@ -37,9 +37,9 @@ module.exports.createCampground = async (req, res, next) => {
   if (!geometry) {
     geometry = { type: 'Point', coordinates: [0, 0] };
   }
-
+  campground.geometry = geometry || { type: 'Point', coordinates: [0, 0] };
   const campground = new Campground(req.body.campground);
-  campground.geometry = geometry;
+  //campground.geometry = geometry;
   campground.images = req.files.map(f => ({ url: f.path, filename: f.filename }));
   campground.author = req.user._id;
 
