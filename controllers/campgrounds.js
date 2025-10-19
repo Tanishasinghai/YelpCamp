@@ -23,9 +23,16 @@ async function geocodeOSM(query) {
 }
 
 module.exports.index = async (req, res, next) => {
-  const campgrounds = await Campground.find({});
-  res.render('campgrounds/index', { campgrounds });
+  try {
+    const campgrounds = await Campground.find({}).lean(); // lean = plain objects
+    // quick sanity log in Render
+    console.log('Index count:', campgrounds.length);
+    res.render('campgrounds/index', { campgrounds });
+  } catch (e) {
+    next(e);
+  }
 };
+
 
 module.exports.renderNewForm = (req, res) => {
   res.render('campgrounds/new');
