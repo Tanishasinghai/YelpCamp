@@ -33,12 +33,18 @@ module.exports.renderNewForm=(req,res)=>{
 };
 
 module.exports.createCampground=async (req,res,next)=>{
-    const geoData=await geocoder.forwardGeocode({
+   /* const geoData=await geocoder.forwardGeocode({
         query:req.body.campground.location,
         limit:1
-    }).send()
+    }).send()*/
+    let geometry = await geocodeOSM(req.body.campground.location);
+    if (!geometry) {
+    // fallback if no location is found
+    geometry = { type: 'Point', coordinates: [0, 0] };
+    }
     const campground=new Campground(req.body.campground);
-    campground.geometry=geoData.body.features[0].geometry;
+    //campground.geometry=geoData.body.features[0].geometry;
+    campground.geometry = geometry;
     campground.images=req.files.map(f=> ({ url:f.path, filename:f.filename}));
     //if(!req.body.campground)throw new ExpressError('Invalid Campground data')    
     campground.author=req.user._id;
@@ -72,7 +78,7 @@ module.exports.renderEditForm=async (req,res,next)=>{
     res.render('campgrounds/edit',{campground});
 };
 
-module.exports.updateCampground=async (req,res,next)=>{
+/*module.exports.updateCampground=async (req,res,next)=>{
     const {id}=req.params; 
     console.log(req.body);
     const campground=await Campground.findByIdAndUpdate(id,{...req.body.campground})
@@ -88,7 +94,40 @@ module.exports.updateCampground=async (req,res,next)=>{
 }
     req.flash('success','Succesfully update a Campground');
    res.redirect(`/campgrounds/${campground._id}`);
+};*/
+module.exports.updateCampground = async (req, res, next) => {
+    const { id } = req.params;
+
+    // Update campground main data
+    const campground = await Campground.findByIdAndUpdate(id, { ...req.body.campground }, { new: true });
+
+    // Add newly uploaded images
+    const imgs = req.files.map(f => ({ url: f.path, filename: f.filename }));
+    campground.images.push(...imgs);
+
+    // ✅ NEW: Update location using OpenStreetMap (no API key needed)
+    if (req.body.campground.location) {
+        let geometry = await geocodeOSM(req.body.campground.location);
+        if (!geometry) {
+            geometry = { type: 'Point', coordinates: [0, 0] }; // fallback to 0,0
+        }
+        campground.geometry = geometry;
+    }
+
+    await campground.save();
+
+    // Delete old images if selected
+    if (req.body.deleteImages) {
+        for (let filename of req.body.deleteImages) {
+            await cloudinary.uploader.destroy(filename);
+        }
+        await campground.updateOne({ $pull: { images: { filename: { $in: req.body.deleteImages } } } });
+    }
+
+    req.flash('success', 'Successfully updated campground!');
+    res.redirect(`/campgrounds/${campground._id}`);
 };
+
 
 module.exports.deleteCampground=async (req,res,next)=>{
     const {id}=req.params;
