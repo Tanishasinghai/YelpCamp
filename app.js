@@ -28,16 +28,26 @@ const { MongoStore } = require('connect-mongo');
 
 const MongoDBStore = require('connect-mongo')(session);
 // Build DB URL and TRIM it (removes trailing \n, spaces)
+// --- Build & sanitize DB URL completely ---
 const rawDbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
-const dburl = rawDbUrl.trim();
 
-// Debug the TRIMMED value (mask password)
+// Remove zero-width chars + ALL whitespace anywhere, then trim again
+const dburl = rawDbUrl
+  .replace(/[\u200B-\u200D\uFEFF]/g, '') // zero-width spaces
+  .replace(/[\r\n\t ]/g, '')             // CR, LF, tab, spaces
+  .trim();
+
+// Debug the sanitized value (mask password) so we can SEE what Render is giving us
 const masked = dburl.replace(/(:)([^@]+)(@)/, '$1<hidden>$3');
 console.log('DB_URL (masked):', masked);
 console.log('len =', dburl.length, '| hasWhitespace =', /\s/.test(dburl));
 for (let i = 0; i < dburl.length; i++) {
-  if (/\s/.test(dburl[i])) console.log('whitespace at index', i, JSON.stringify(dburl[i]));
+  const ch = dburl[i];
+  if (/[\s'\"`]/.test(ch) || ch.charCodeAt(0) > 126) {
+    console.log('⚠ odd char at', i, 'code=', ch.charCodeAt(0), 'repr=', JSON.stringify(ch));
+  }
 }
+
 
 // CONNECTING MONGOOSE
 mongoose.connect(dburl, {
